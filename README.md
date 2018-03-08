@@ -2,8 +2,11 @@
 
 This panel is an extension of https://github.com/NatelEnergy/grafana-discrete-panel
 
-Metrics may have two values one for color encoding, the other for the display text in the panel. 
-
+### Enhencements
+* Per displayed row multiple metric series can be used (separate series for the displayed value)
+* Configurable indents for row headers
+* Option of showing a time line
+* Option of configuring dynamic links (using different metric data) for on-click action for the rows
 
 ### Screenshots
 

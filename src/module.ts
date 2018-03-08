@@ -50,33 +50,45 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     backgroundColor: 'rgba(128, 128, 128, 0.1)',
     lineColor: 'rgba(128, 128, 128, 1.0)',
     textSize: 24,
-    headerColumnIndent: 100,
+    textSizeTime: 12,
     extendLastValue: true,
     writeLastValue: true,
     writeAllValues: false,
     writeMetricNames: false,
     showLegend: true,
-    useDisplaySeries: false,
     showLegendNames: true,
     showLegendValues: true,
     showLegendPercent: true,
     highlightOnMouseover: true,
     legendSortBy: '-ms',
-    units: 'short'
+    units: 'short',
+    headerColumnIndent: 100,
+    topOffset: 0,
+    additionalColumns: 0,
+    useLinkOnClick: false,
+    gotoLink: '',
+    gotoLinkToolTip: '',
+    openLinkInNewTab: true,
+    useDisplaySeries: false,
+    valueMappingForDisplaySeries: false,
+    valueMappingForExtraColumns: false,
+    valueMappingForTemplateVars: false,
+    showTimeAxis: true
   };
 
   data: any = null;
   externalPT = false;
   isTimeline = false;
   hoverPoint: any = null;
+  hoverMetric: any = null;
   colorMap: any = {};
   _colorsPaleteCash: any = null;
   unitFormats: any = null; // only used for editor
   formatter: any = null;
 
-  constructor($scope, $injector) {
+  constructor($scope, $injector, templateSrv, private $sce) {
     super($scope, $injector);
-
+    this.templateSrv = templateSrv;
     // defaults configs
     _.defaultsDeep(this.panel, this.defaults);
 
@@ -118,7 +130,12 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     var rows = this.data.length;
     var rowHeight = this.panel.rowHeight;
 
-    var height = rowHeight * rows;
+    var timeAxisYOffset = 0;
+    if(this.panel.showTimeAxis){
+      timeAxisYOffset = this.panel.textSizeTime+25;
+    }
+
+    var height = this.panel.topOffset + rowHeight * rows + timeAxisYOffset;
     var width = rect.width;
     this.canvas.width = width * this._devicePixelRatio;
     this.canvas.height = height * this._devicePixelRatio;
@@ -138,11 +155,11 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     // ctx.shadowColor = "rgba(0,0,0,0.3)";
     // ctx.shadowBlur = 3;
 
-    var top = 0;
+    var top = this.panel.topOffset;
 
     var elapsed = this.range.to - this.range.from - this.panel.headerColumnIndent;
     let point = null;
-
+    var metricIndex = 0;
     _.forEach(this.data, (metric) => {
       var centerV = top + (rowHeight/2);
 
@@ -160,6 +177,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
         point = metric.changes[0];
         for (let i = 0; i<metric.changes.length; i++) {
           point = metric.changes[i];
+          point.x = width;
           if (point.start <= this.range.to) {
             let xt = Math.max( point.start - this.range.from, 0 );
             point.x = this.panel.headerColumnIndent + ((xt / elapsed) * (width - this.panel.headerColumnIndent));
@@ -216,7 +234,6 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
       ctx.fillStyle = "#000000";
 
       if ( this.panel.writeMetricNames &&
-          this.mouse.position == null &&
         (!this.panel.highlightOnMouseover || this.panel.highlightOnMouseover )
       ) {
         ctx.fillStyle = this.panel.metricNameColor;
@@ -232,13 +249,13 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
 
           if (this.isTimeline) {
             point = metric.changes[0];
-            for (let i = 0; i<metric.changes.length; i++) {
-              if (metric.changes[i].start > this.mouse.position.ts) {
+            for (var i = 0; i < metric.changes.length; i++) {
+              if (metric.changes[i].x > this.mouse.position.x) {
                 next = metric.changes[i];
                 break;
               }
               point = metric.changes[i];
-            }
+            }  
           } else if (this.panel.display === 'stacked') {
             point = metric.legendInfo[0];
             for (let i = 0; i<metric.legendInfo.length; i++) {
@@ -254,6 +271,20 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
           ctx.globalCompositeOperation = 'destination-out';
           ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
           ctx.beginPath();
+
+          var j = Math.floor((this.mouse.position.y - this.panel.topOffset) / this.panel.rowHeight);
+          if (j < 0) {
+              j = 0;
+          }
+          if (j >= this.data.length) {
+              j = this.data.length - 1;
+          }
+          if(j == metricIndex){
+              ctx.fillRect(this.panel.headerColumnIndent, top, point.x - this.panel.headerColumnIndent, rowHeight);
+          } else {
+              ctx.fillRect(0, top, point.x, rowHeight);
+          }
+
           ctx.fillRect(0, top, point.x, rowHeight);
           ctx.fill();
 
@@ -280,11 +311,9 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
           }
         }
       }
-
+      metricIndex += 1;
       top += rowHeight;
     });
-
-
 
     if ( this.isTimeline && this.mouse.position != null ) {
       if (this.mouse.down != null) {
@@ -327,6 +356,10 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
           ctx.stroke();
         }
       }
+    }
+
+    if(this.panel.showTimeAxis){
+      this.drawTimeAxis(ctx,top)
     }
   }
 
@@ -403,6 +436,25 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     return val;
   }
 
+  formatValueWithoutMapping(val) {
+
+    if (_.isNumber(val) ) {
+      if( this.formatter ) {
+        return this.formatter( val, this.panel.decimals );
+      }
+    }
+
+    var isNull = _.isNil(val);
+    if (!isNull && !_.isString(val)) {
+      val = val.toString(); // convert everything to a string
+    }
+
+    if (isNull) {
+      return "null";
+    }
+    return val;
+  }
+
   getColor(val) {
     if (_.has(this.colorMap, val)) {
       return this.colorMap[val];
@@ -443,20 +495,53 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
 
     var data = [];
     if(this.panel.useDisplaySeries) {
-      if(dataList.length < 2){
-        throw new Error('Query result must have (at least) two result columns when using Display Series as option!');
+      if(dataList.length % (2 + this.panel.additionalColumns) != 0){
+        throw new Error('Query result must have (at least) ' + (2 + this.panel.additionalColumns) + ' result columns when using Display Series or additional data columns!');
       }
-      if('table' === dataList[0].type){
+      if(dataList.length != 0 && 'table' === dataList[0].type){
         throw new Error('When using Display Series the result format must not be "Table"!');
       }
-      for (var k = 0; k < dataList.length; k=k+2) {
-        var metric = dataList[k];
-        var metric2 = dataList[k+1];
-        var res = new DistinctPoints(metric.target);
-        for (var j = 0; j < metric.datapoints.length; j++) {
-          var point = metric.datapoints[j];
-          var point2 = metric2.datapoints[j];
-          res.add(point[1], this.formatValue(point[0]), this.formatValue(point2[0]));
+      for (var k = 0; k < dataList.length; k=k+2+this.panel.additionalColumns) {
+        var res = new DistinctPoints(dataList[k].target);
+        for (var j = 0; j < dataList[k].datapoints.length; j++) {
+          var point = dataList[k].datapoints[j];
+          var point2 = dataList[k+1].datapoints[j];
+          var additionalValues = new Array<any>();
+          for (var m = 0; m < this.panel.additionalColumns; m++){
+            if(this.panel.valueMappingForExtraColumns){
+              additionalValues.push(this.formatValue(dataList[k+2+m].datapoints[j][0]))
+            }else{
+              additionalValues.push(this.formatValueWithoutMapping(dataList[k+2+m].datapoints[j][0]))
+            }
+          }
+          var dispValue = "" 
+          if(this.panel.valueMappingForDisplaySeries){
+            dispValue =this.formatValue(point2[0]);
+          }else{
+            dispValue =this.formatValueWithoutMapping(point2[0]);
+          }
+          res.add(point[1], this.formatValue(point[0]), dispValue, additionalValues);
+        }
+        res.finish(this);
+        data.push(res);
+      }
+    } else if(this.panel.additionalColumns > 0){
+      if(dataList.length != 0 && 'table' === dataList[0].type){
+        throw new Error('When using additional data columns the result format must not be "Table"!');
+      }
+      for (var k = 0; k < dataList.length; k=k+1+this.panel.additionalColumns) {
+        var res = new DistinctPoints(dataList[k].target);
+        for (var j = 0; j < dataList[k].datapoints.length; j++) {
+          var point = dataList[k].datapoints[j];
+          var additionalValues = new Array<any>();
+          for (var m = 0; m < this.panel.additionalColumns; m++){
+            if(this.panel.valueMappingForExtraColumns){
+              additionalValues.push(this.formatValue(dataList[k+1+m].datapoints[j][0]))
+            }else{
+              additionalValues.push(this.formatValueWithoutMapping(dataList[k+1+m].datapoints[j][0]))
+            }
+          }
+          res.add(point[1], this.formatValue(point[0]), null, additionalValues);
         }
         res.finish(this);
         data.push(res);
@@ -473,7 +558,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
             let res = new DistinctPoints(metric.columns[i].text);
             for (var j = 0; j<metric.rows.length; j++) {
               var row = metric.rows[j];
-              res.add( row[0], this.formatValue( row[i] ), null );
+              res.add( row[0], this.formatValue( row[i] ), null , null);
             }
             res.finish( this );
             data.push( res );
@@ -481,7 +566,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
         } else {
           let res = new DistinctPoints( metric.target );
           _.forEach(metric.datapoints, (point) => {
-            res.add( point[1], this.formatValue(point[0]), null );
+            res.add( point[1], this.formatValue(point[0]), null , null);
           });
           res.finish( this );
           data.push( res );
@@ -639,7 +724,12 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     body += this.dashboard.formatDate( moment(to) ) + "<br/><br/>";
     body += moment.duration(time).humanize() + "<br/>";
     body += "</center>";
-
+    if(this.panel.useLinkOnClick && this.panel.gotoLinkToolTip != ''){
+      body +="<br/><br/>"
+      body += "<center>";
+      body += this.transformString(this.panel.gotoLinkToolTip)
+      body += "</center>";
+    }
     var pageX = 0;
     var pageY = 0;
     if (isExternal) {
@@ -667,18 +757,19 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     this.externalPT = false;
     if (this.data && this.data.length) {
       var hover = null;
-      var j = Math.floor(this.mouse.position.y/this.panel.rowHeight);
+      var j = Math.floor((this.mouse.position.y - this.panel.topOffset)/this.panel.rowHeight);
       if (j < 0) {
         j = 0;
       }
       if (j >= this.data.length) {
         j = this.data.length-1;
       }
-
+      this.hoverMetric = this.data[j]
+      
       if (this.isTimeline) {
         hover = this.data[j].changes[0];
         for (let i = 0; i<this.data[j].changes.length; i++) {
-          if (this.data[j].changes[i].start > this.mouse.position.ts) {
+          if (this.data[j].changes[i].x > this.mouse.position.x) {
             break;
           }
           hover = this.data[j].changes[i];
@@ -714,12 +805,66 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
   }
 
   onMouseClicked(where) {
-    var pt = this.hoverPoint;
-    if (pt && pt.start) {
-      var range = {from: moment.utc(pt.start), to: moment.utc(pt.start+pt.ms) };
-      this.timeSrv.setTime(range);
-      this.clear();
+    if(this.panel.useLinkOnClick){
+      var url = this.transformString(this.panel.gotoLink);
+      if(this.panel.openLinkInNewTab){
+        window.open(url,'_blank');
+      }else{
+        window.open(url,'_self');
+      }
+      
+    }else{
+      var pt = this.hoverPoint;
+      if (pt && pt.start) {
+        var range = {from: moment.utc(pt.start), to: moment.utc(pt.start+pt.ms) };
+        this.timeSrv.setTime(range);
+        this.clear();
+      }
     }
+  }
+
+  transformString(text){
+    var indexOffset = 1;
+      if(this.panel.useDisplaySeries){
+        indexOffset = 2;
+      }
+    for (let i = 0; i <= indexOffset + this.panel.additionalColumns; i++){
+      var tmp = new RegExp("\\$__cell_" + i, "g");
+
+      if(i == 0){
+        text = text.replace(tmp, this.hoverMetric.name); 
+      }
+      if(i == 1){
+        text = text.replace(tmp, this.hoverPoint.val); 
+      }
+      var diff = 2;
+      if(this.panel.useDisplaySeries){
+        if(i == 2){
+          text = text.replace(tmp, this.hoverPoint.dispVal); 
+        }
+        diff = 3;
+      }
+      if (i >= diff){
+        text = text.replace(tmp, this.hoverPoint.additionalValues[i-diff]);
+      }
+    }
+   
+    if(this.panel.valueMappingForTemplateVars){
+      for (var i = 0; i < this.templateSrv.variables.length; i++) {
+        var variable = this.templateSrv.variables[i];
+  
+        if (!variable.current || !variable.current.isNone && !variable.current.value) {
+          continue;
+        }
+        var regex = new RegExp("\\$" + variable.name, "g");
+        var mappedValue = this.formatValue(variable.current.value)
+        text = text.replace(regex, mappedValue); 
+      }
+    }else{
+      text = this.templateSrv.replace(text, this.panel.scopedVars);
+    }
+    
+    return text;
   }
 
   onMouseSelectedRange(range) {
@@ -735,6 +880,211 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     appEvents.emit('graph-hover-clear');
     this.render();
   }
+
+
+  drawTimeAxis(ctx, currentTop){
+    ctx.font = this.panel.textSizeTime + 'px "Open Sans", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = this.panel.metricNameColor;
+    ctx.textAlign = 'left';
+    ctx.strokeStyle = this.panel.metricNameColor;
+    ctx.textBaseline = 'top';
+    ctx.setLineDash([7, 5]);/*dashes are 5px and spaces are 3px*/
+
+    var dataWidth = this.wrap.getBoundingClientRect().width - this.panel.headerColumnIndent
+    var min = _.isUndefined(this.range.from) ? null : this.range.from.valueOf();
+    var max = _.isUndefined(this.range.to) ? null : this.range.to.valueOf();
+    var minPxInterval = ctx.measureText("12/33 24:59").width * 2;
+    var estNumTicks =  dataWidth / minPxInterval;
+    var estTimeInterval = (max - min) / estNumTicks;
+    var timeResolution = this.getTimeResolution(estTimeInterval);
+    var pixelStep = (timeResolution/(max-min))*dataWidth;
+    var nextPointInTime = this.roundDate(min, timeResolution)+timeResolution;
+    var xPos = this.panel.headerColumnIndent + ((nextPointInTime-min)/(max-min)) * dataWidth
+
+    currentTop += 10;
+    var timeFormat = this.time_format(max-min, timeResolution/1000);
+
+    while(nextPointInTime < max){
+      // draw ticks
+      ctx.beginPath();
+      ctx.moveTo(xPos, this.panel.topOffset);
+      ctx.lineTo(xPos, currentTop+5);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // draw time label
+      var date = new Date(nextPointInTime);
+      var dateStr = this.formatDate(date, timeFormat)
+      var xOffset = ctx.measureText(dateStr).width / 2;
+      ctx.fillText( dateStr, xPos - xOffset, currentTop+10);
+
+      nextPointInTime+=timeResolution;
+      xPos+=pixelStep;
+    }
+  }
+
+  time_format(range, secPerTick) {
+    var oneDay = 86400000;
+    var oneYear = 31536000000;
+
+    if (secPerTick <= 45) {
+      return "%H:%M:%S";
+    }
+    if (secPerTick <= 7200 || range <= oneDay) {
+      return "%H:%M";
+    }
+    if (secPerTick <= 80000) {
+      return "%m/%d %H:%M";
+    }
+    if (secPerTick <= 2419200 || range <= oneYear) {
+      return "%m/%d";
+    }
+    return "%Y-%m";
+  }
+
+  getTimeResolution(estTimeInterval){
+    var timeIntInSecs= estTimeInterval / 1000;
+
+    if (timeIntInSecs <= 30) {
+      return 30*1000;
+    }
+    
+    if (timeIntInSecs <= 60) {
+      return 60*1000;
+    }
+
+    if (timeIntInSecs <= (60*5)) {
+      return 5*60*1000;
+    }
+
+    if (timeIntInSecs <= (60*10)) {
+      return 10*60*1000;
+    }
+
+    if (timeIntInSecs <= (60*30)) {
+      return 30*60*1000;
+    }
+
+    if (timeIntInSecs <= (60*60)) {
+      return 60*60*1000;
+    }
+
+    if (timeIntInSecs <= (60*60)) {
+      return 60*60*1000;
+    }
+
+    if (timeIntInSecs <= (2*60*60)) {
+      return 2*60*60*1000;
+    }
+
+    if (timeIntInSecs <= (6*60*60)) {
+      return 6*60*60*1000;
+    }
+
+    if (timeIntInSecs <= (12*60*60)) {
+      return 12*60*60*1000;
+    }
+
+    if (timeIntInSecs <= (24*60*60)) {
+      return 24*60*60*1000;
+    }
+
+    if (timeIntInSecs <= (2*24*60*60)) {
+      return 2*24*60*60*1000;
+    }
+
+    if (timeIntInSecs <= (7*24*60*60)) {
+      return 7*24*60*60*1000;
+    }
+
+    if (timeIntInSecs <= (30*24*60*60)) {
+      return 30*24*60*60*1000;
+    }
+
+    return 6*30*24*60*60*1000
+  }
+
+  roundDate(timeStamp, roundee){
+    timeStamp -= timeStamp % roundee ;//subtract amount of time since midnight
+    return timeStamp;
+  }
+
+  formatDate(d, fmt) {
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		if (typeof d.strftime == "function") {
+			return d.strftime(fmt);
+		}
+
+		var r = [];
+		var escape = false;
+		var hours = d.getHours();
+		var isAM = hours < 12;
+
+		if (monthNames == null) {
+			monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		}
+
+		if (dayNames == null) {
+			dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		}
+
+		var hours12;
+
+		if (hours > 12) {
+			hours12 = hours - 12;
+		} else if (hours == 0) {
+			hours12 = 12;
+		} else {
+			hours12 = hours;
+		}
+
+		for (var i = 0; i < fmt.length; ++i) {
+
+			var c = fmt.charAt(i);
+
+			if (escape) {
+				switch (c) {
+					case 'a': c = "" + dayNames[d.getDay()]; break;
+					case 'b': c = "" + monthNames[d.getMonth()]; break;
+					case 'd': c = this.leftPad(d.getDate(), ""); break;
+					case 'e': c = this.leftPad(d.getDate(), " "); break;
+					case 'h':	// For back-compat with 0.7; remove in 1.0
+					case 'H': c = this.leftPad(hours, null); break;
+					case 'I': c = this.leftPad(hours12, null); break;
+					case 'l': c = this.leftPad(hours12, " "); break;
+					case 'm': c = this.leftPad(d.getMonth() + 1, ""); break;
+					case 'M': c = this.leftPad(d.getMinutes(), null); break;
+					// quarters not in Open Group's strftime specification
+					case 'q':
+						c = "" + (Math.floor(d.getMonth() / 3) + 1); break;
+					case 'S': c = this.leftPad(d.getSeconds(), null); break;
+					case 'y': c = this.leftPad(d.getFullYear() % 100, null); break;
+					case 'Y': c = "" + d.getFullYear(); break;
+					case 'p': c = (isAM) ? ("" + "am") : ("" + "pm"); break;
+					case 'P': c = (isAM) ? ("" + "AM") : ("" + "PM"); break;
+					case 'w': c = "" + d.getDay(); break;
+				}
+				r.push(c);
+				escape = false;
+			} else {
+				if (c == "%") {
+					escape = true;
+				} else {
+					r.push(c);
+				}
+			}
+		}
+
+		return r.join("");
+  }
+
+  leftPad(n, pad) {
+    n = "" + n;
+    pad = "" + (pad == null ? "0" : pad);
+    return n.length == 1 ? pad + n : n;
+  };
+  
 }
 
 export {

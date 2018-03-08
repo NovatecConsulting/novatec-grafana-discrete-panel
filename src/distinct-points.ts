@@ -16,11 +16,12 @@ export class DistinctPoints {
 
   // ts numeric ms,
   // val is the normalized value
-  add( ts: number, val: any, dispVal: any) {
+  add( ts: number, val: any, dispVal: any, additionalValues: Array<any>) {
     if (this.last == null) {
       this.last = {
         val: val,
         dispVal: dispVal,
+        additionalValues: additionalValues,
         start: ts,
         ms: 0
       };
@@ -43,10 +44,13 @@ export class DistinctPoints {
         if (!this.asc) {
           this.last.start = ts;
         }
+        this.last.dispVal = dispVal;
+        this.last.additionalValues = additionalValues
       } else {
         this.last = {
           val: val,
           dispVal: dispVal,
+          additionalValues: additionalValues,
           start: ts,
           ms: 0
         };
@@ -79,6 +83,7 @@ export class DistinctPoints {
       this.changes.push( {
         val: this.last.val,
         dispVal: this.last.dispVal,
+        additionalValues: this.last.additionalValues,
         start: until,
         ms: 0
       });
