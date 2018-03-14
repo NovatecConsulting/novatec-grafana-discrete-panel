@@ -255,7 +255,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
                 break;
               }
               point = metric.changes[i];
-            }  
+            }
           } else if (this.panel.display === 'stacked') {
             point = metric.legendInfo[0];
             for (let i = 0; i<metric.legendInfo.length; i++) {
@@ -405,9 +405,6 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
           }
         }
       }
-      if( this.formatter ) {
-        return this.formatter( val, this.panel.decimals );
-      }
     }
 
     var isNull = _.isNil(val);
@@ -433,6 +430,11 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     if (isNull) {
       return "null";
     }
+
+    if( this.formatter && _.isNumber(val) ) {
+      return this.formatter( val, this.panel.decimals );
+    }
+
     return val;
   }
 
@@ -476,7 +478,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     return color;
   }
 
-  // Override the 
+  // Override the
   applyPanelTimeOverrides() {
     super.applyPanelTimeOverrides();
 
@@ -514,7 +516,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
               additionalValues.push(this.formatValueWithoutMapping(dataList[k+2+m].datapoints[j][0]))
             }
           }
-          var dispValue = "" 
+          var dispValue = ""
           if(this.panel.valueMappingForDisplaySeries){
             dispValue =this.formatValue(point2[0]);
           }else{
@@ -552,7 +554,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
           if ('time' !== metric.columns[0].type) {
             throw new Error('Expected a time column from the table format');
           }
-  
+
           var last = null;
           for (var i = 1; i<metric.columns.length; i++) {
             let res = new DistinctPoints(metric.columns[i].text);
@@ -704,7 +706,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     var to = point.start + point.ms;
     var time = point.ms;
     var val = point.val;
-    
+
     if(this.panel.useDisplaySeries){
       val = point.dispVal;
     }
@@ -765,7 +767,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
         j = this.data.length-1;
       }
       this.hoverMetric = this.data[j]
-      
+
       if (this.isTimeline) {
         hover = this.data[j].changes[0];
         for (let i = 0; i<this.data[j].changes.length; i++) {
@@ -812,7 +814,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
       }else{
         window.open(url,'_self');
       }
-      
+
     }else{
       var pt = this.hoverPoint;
       if (pt && pt.start) {
@@ -832,15 +834,15 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
       var tmp = new RegExp("\\$__cell_" + i, "g");
 
       if(i == 0){
-        text = text.replace(tmp, this.hoverMetric.name); 
+        text = text.replace(tmp, this.hoverMetric.name);
       }
       if(i == 1){
-        text = text.replace(tmp, this.hoverPoint.val); 
+        text = text.replace(tmp, this.hoverPoint.val);
       }
       var diff = 2;
       if(this.panel.useDisplaySeries){
         if(i == 2){
-          text = text.replace(tmp, this.hoverPoint.dispVal); 
+          text = text.replace(tmp, this.hoverPoint.dispVal);
         }
         diff = 3;
       }
@@ -848,22 +850,22 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
         text = text.replace(tmp, this.hoverPoint.additionalValues[i-diff]);
       }
     }
-   
+
     if(this.panel.valueMappingForTemplateVars){
       for (var i = 0; i < this.templateSrv.variables.length; i++) {
         var variable = this.templateSrv.variables[i];
-  
+
         if (!variable.current || !variable.current.isNone && !variable.current.value) {
           continue;
         }
         var regex = new RegExp("\\$" + variable.name, "g");
         var mappedValue = this.formatValue(variable.current.value)
-        text = text.replace(regex, mappedValue); 
+        text = text.replace(regex, mappedValue);
       }
     }else{
       text = this.templateSrv.replace(text, this.panel.scopedVars);
     }
-    
+
     return text;
   }
 
@@ -948,7 +950,7 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     if (timeIntInSecs <= 30) {
       return 30*1000;
     }
-    
+
     if (timeIntInSecs <= 60) {
       return 60*1000;
     }
@@ -1084,11 +1086,9 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
     pad = "" + (pad == null ? "0" : pad);
     return n.length == 1 ? pad + n : n;
   };
-  
+
 }
 
 export {
   DiscretePanelCtrl as PanelCtrl
 };
-
-
