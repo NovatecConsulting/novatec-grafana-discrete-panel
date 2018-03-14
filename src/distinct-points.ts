@@ -44,8 +44,6 @@ export class DistinctPoints {
         if (!this.asc) {
           this.last.start = ts;
         }
-        this.last.dispVal = dispVal;
-        this.last.additionalValues = additionalValues
       } else {
         this.last = {
           val: val,
