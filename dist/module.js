@@ -790,6 +790,8 @@ System.register(['./canvas-metric', './distinct-points', 'lodash', 'jquery', 'mo
                             text = text.replace(tmp, this.hoverPoint.additionalValues[i_4 - diff]);
                         }
                     }
+                    text = text.replace(new RegExp("\\$__time_from", "g"), this.timeSrv.time.from);
+                    text = text.replace(new RegExp("\\$__time_to", "g"), this.timeSrv.time.to);
                     if (this.panel.valueMappingForTemplateVars) {
                         for (var i = 0; i < this.templateSrv.variables.length; i++) {
                             var variable = this.templateSrv.variables[i];

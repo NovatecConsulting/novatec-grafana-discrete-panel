@@ -143,28 +143,34 @@
       <label class="gf-form-label width-14">Link URL
         <info-popover mode="right-normal">Specify an URL (relative or absolute)<br><br>
           Use special variables to specify cell values: <br>
-          $__cell_n refers to Nth column value in current row. Column indexes are started from 0.<br>
-          $__cell_0 is the name of the hovered series. <br>
-          $__cell_1 is the primary value.<br>
-          $__cell_2 is the display series value (if enabled) or the first column from the additional data columns.<br>
-          $__cell_n with higher Ns refers to additional data columns.
+          <ul>
+            <li>$__time_from, $__time_to refer to the current selection in the dashboards time range.</li>
+            <li>$__cell_n refers to Nth column value in current row. Column indexes are started from 0.</li>
+            <li>$__cell_0 is the name of the hovered series.</li>
+            <li>$__cell_1 is the primary value.</li>
+            <li>$__cell_2 is the display series value (if enabled) or the first column from the additional data columns.</li>
+            <li>$__cell_n with higher Ns refers to additional data columns.</li>
+          </ul> 
         </info-popover>
       </label>
-      <input type="text" ng-model="ctrl.panel.gotoLink" class="gf-form-input max-width-100" ng-blur="ctrl.render()" min="50"/>
+      <input type="text" ng-model="ctrl.panel.gotoLink" class="gf-form-input width-30" ng-blur="ctrl.render()" min="50"/>
     </div>
 
     <div ng-if="ctrl.panel.useLinkOnClick" class="gf-form">
       <label class="gf-form-label width-14">Tooltip
         <info-popover mode="right-normal">Specify a tool tip<br><br>
           Use special variables to specify cell values: <br>
-          $__cell_n refers to Nth column value in current row. Column indexes are started from 0.<br>
-          $__cell_0 is the name of the hovered series. <br>
-          $__cell_1 is the primary value.<br>
-          $__cell_2 is the display series value (if enabled) or the first column from the additional data columns.<br>
-          $__cell_n with higher Ns refers to additional data columns.
+          <ul>
+            <li>$__time_from, $__time_to refer to the current selection in the dashboards time range.</li>
+            <li>$__cell_n refers to Nth column value in current row. Column indexes are started from 0.</li>
+            <li>$__cell_0 is the name of the hovered series.</li>
+            <li>$__cell_1 is the primary value.</li>
+            <li>$__cell_2 is the display series value (if enabled) or the first column from the additional data columns.</li>
+            <li>$__cell_n with higher Ns refers to additional data columns.</li>
+          </ul> 
         </info-popover>
       </label>
-      <input type="text" ng-model="ctrl.panel.gotoLinkToolTip" class="gf-form-input max-width-100" ng-blur="ctrl.render()" min="50"/>
+      <input type="text" ng-model="ctrl.panel.gotoLinkToolTip" class="gf-form-input width-30" ng-blur="ctrl.render()" min="50"/>
     </div>
     </div>
 </div>
