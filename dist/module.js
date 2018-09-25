@@ -768,6 +768,7 @@ System.register(['./canvas-metric', './distinct-points', 'lodash', 'jquery', 'mo
                 };
                 DiscretePanelCtrl.prototype.transformString = function (text) {
                     var indexOffset = 1;
+                    var hoverPt = this.hoverPoint;
                     if (this.panel.useDisplaySeries) {
                         indexOffset = 2;
                     }
@@ -777,21 +778,30 @@ System.register(['./canvas-metric', './distinct-points', 'lodash', 'jquery', 'mo
                             text = text.replace(tmp, this.hoverMetric.name);
                         }
                         if (i_4 == 1) {
-                            text = text.replace(tmp, this.hoverPoint.val);
+                            text = text.replace(tmp, hoverPt.val);
                         }
                         var diff = 2;
                         if (this.panel.useDisplaySeries) {
                             if (i_4 == 2) {
-                                text = text.replace(tmp, this.hoverPoint.dispVal);
+                                text = text.replace(tmp, hoverPt.dispVal);
                             }
                             diff = 3;
                         }
                         if (i_4 >= diff) {
-                            text = text.replace(tmp, this.hoverPoint.additionalValues[i_4 - diff]);
+                            text = text.replace(tmp, hoverPt.additionalValues[i_4 - diff]);
                         }
                     }
+                    var tFormat = 'YYYY-MM-DDTHH:mm:ss';
+                    var timeAbsFrom = moment_1.default(hoverPt.start).format(tFormat);
+                    var timeAbsTo = moment_1.default(hoverPt.start + hoverPt.ms).format(tFormat);
+                    var timeUtcFrom = moment_1.default.utc(hoverPt.start).format(tFormat);
+                    var timeUtcTo = moment_1.default.utc(hoverPt.start + hoverPt.ms).format(tFormat);
                     text = text.replace(new RegExp("\\$__time_from", "g"), this.timeSrv.time.from);
                     text = text.replace(new RegExp("\\$__time_to", "g"), this.timeSrv.time.to);
+                    text = text.replace(new RegExp("\\$__time_abs_from", "g"), timeAbsFrom);
+                    text = text.replace(new RegExp("\\$__time_abs_to", "g"), timeAbsTo);
+                    text = text.replace(new RegExp("\\$__time_utc_from", "g"), timeUtcFrom);
+                    text = text.replace(new RegExp("\\$__time_utc_to", "g"), timeUtcTo);
                     if (this.panel.valueMappingForTemplateVars) {
                         for (var i = 0; i < this.templateSrv.variables.length; i++) {
                             var variable = this.templateSrv.variables[i];

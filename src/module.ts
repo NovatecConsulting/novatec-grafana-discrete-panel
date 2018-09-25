@@ -827,9 +827,11 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
 
   transformString(text){
     var indexOffset = 1;
-      if(this.panel.useDisplaySeries){
-        indexOffset = 2;
-      }
+    var hoverPt = this.hoverPoint;
+    
+    if(this.panel.useDisplaySeries){
+      indexOffset = 2;
+    }
     for (let i = 0; i <= indexOffset + this.panel.additionalColumns; i++){
       var tmp = new RegExp("\\$__cell_" + i, "g");
 
@@ -837,22 +839,32 @@ class DiscretePanelCtrl extends CanvasPanelCtrl {
         text = text.replace(tmp, this.hoverMetric.name);
       }
       if(i == 1){
-        text = text.replace(tmp, this.hoverPoint.val);
+        text = text.replace(tmp, hoverPt.val);
       }
       var diff = 2;
       if(this.panel.useDisplaySeries){
         if(i == 2){
-          text = text.replace(tmp, this.hoverPoint.dispVal);
+          text = text.replace(tmp, hoverPt.dispVal);
         }
         diff = 3;
       }
       if (i >= diff){
-        text = text.replace(tmp, this.hoverPoint.additionalValues[i-diff]);
+        text = text.replace(tmp, hoverPt.additionalValues[i-diff]);
       }
     }
 
+    var tFormat = 'YYYY-MM-DDTHH:mm:ss';
+    var timeAbsFrom = moment(hoverPt.start).format(tFormat);
+    var timeAbsTo = moment(hoverPt.start+hoverPt.ms).format(tFormat);
+    var timeUtcFrom = moment.utc(hoverPt.start).format(tFormat);
+    var timeUtcTo = moment.utc(hoverPt.start+hoverPt.ms).format(tFormat);
+
     text = text.replace(new RegExp("\\$__time_from", "g"), this.timeSrv.time.from);
     text = text.replace(new RegExp("\\$__time_to", "g"), this.timeSrv.time.to);
+    text = text.replace(new RegExp("\\$__time_abs_from", "g"), timeAbsFrom);
+    text = text.replace(new RegExp("\\$__time_abs_to", "g"), timeAbsTo);
+    text = text.replace(new RegExp("\\$__time_utc_from", "g"), timeUtcFrom);
+    text = text.replace(new RegExp("\\$__time_utc_to", "g"), timeUtcTo);
 
     if(this.panel.valueMappingForTemplateVars){
       for (var i = 0; i < this.templateSrv.variables.length; i++) {
