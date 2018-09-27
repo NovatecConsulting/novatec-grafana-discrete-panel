@@ -796,8 +796,16 @@ System.register(['./canvas-metric', './distinct-points', 'lodash', 'jquery', 'mo
                     var timeAbsTo = moment_1.default(hoverPt.start + hoverPt.ms).format(tFormat);
                     var timeUtcFrom = moment_1.default.utc(hoverPt.start).format(tFormat);
                     var timeUtcTo = moment_1.default.utc(hoverPt.start + hoverPt.ms).format(tFormat);
-                    text = text.replace(new RegExp("\\$__time_from", "g"), this.timeSrv.time.from);
-                    text = text.replace(new RegExp("\\$__time_to", "g"), this.timeSrv.time.to);
+                    var from = this.timeSrv.time.from;
+                    if (this.timeSrv.time.from._d !== undefined) {
+                        from = this.timeSrv.time.from._d.getTime();
+                    }
+                    var to = this.timeSrv.time.to;
+                    if (this.timeSrv.time.to._d !== undefined) {
+                        to = this.timeSrv.time.to._d.getTime();
+                    }
+                    text = text.replace(new RegExp("\\$__time_from", "g"), from);
+                    text = text.replace(new RegExp("\\$__time_to", "g"), to);
                     text = text.replace(new RegExp("\\$__time_abs_from", "g"), timeAbsFrom);
                     text = text.replace(new RegExp("\\$__time_abs_to", "g"), timeAbsTo);
                     text = text.replace(new RegExp("\\$__time_utc_from", "g"), timeUtcFrom);
