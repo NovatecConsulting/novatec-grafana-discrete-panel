@@ -20,7 +20,7 @@
     "url": "https://github.com/NovaTecConsulting/novatec-grafana-discrete-panel.git"
   },
   "dependencies": {
-    "lodash": "^4.17.13",
+    "lodash": "^4.17.21",
     "moment": "^2.19.3",
     "q": "^1.5.0",
     "systemjs": "^0.19.47"
